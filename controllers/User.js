@@ -143,11 +143,17 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// GET ALL USERS
+// GET ALL USERS WITH OPTIONAL ROLE FILTER
 exports.getUsers = async (req, res) => {
   try {
 
-    const users = await User.find().select("-password");
+    const filter = {};
+
+    if (req.query.role) {
+      filter.role = req.query.role;
+    }
+
+    const users = await User.find(filter).select("-password");
 
     res.status(200).json({
       success: true,
@@ -156,8 +162,6 @@ exports.getUsers = async (req, res) => {
     });
 
   } catch (error) {
-
-    console.error(error);
 
     res.status(500).json({
       success: false,
