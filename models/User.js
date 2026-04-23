@@ -2,7 +2,14 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
 {
-    fullName: {
+    firstName: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    minlength: 3
+  },
+  lastName: {
     type: String,
     required: true,
     unique: true,
@@ -33,7 +40,7 @@ const userSchema = new mongoose.Schema(
 
   role: {
     type: String,
-    enum: ["admin", "landlord", "tenant"],
+    enum: ["admin", "landlord", "agent", "tenant"],
     default: "tenant"
   },
 
@@ -43,15 +50,9 @@ const userSchema = new mongoose.Schema(
     unique: true
   },
 
-  dob: {
-    type: Date,
-    required: true
-  },
-
-  address:{
-    type: String,
-    required: false
-  }
+  isVerified: { type: Boolean, default: false },
+  otp: String,
+  otpExpires: Date,
 },
 {
   timestamps: true
