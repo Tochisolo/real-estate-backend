@@ -7,7 +7,15 @@ const propertyRoutes = require("./routes/property.js");
 
 
 const app = express();
-app.use(cors());
+// app.use(cors());
+
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "http://localhost:5173/0", // change to frontend url later after deployment of frontend is done
+  methods: "GET,POST,PUT,DELETE",
+  credentials: true,
+};
+app.use(cors(corsOptions));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
