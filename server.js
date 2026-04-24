@@ -14,8 +14,16 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Debug middleware
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.path}`);
-  console.log("Content-Type:", req.get('content-type'));
-  console.log("req.body:", req.body);
+  const contentType = req.get('content-type');
+  if (contentType) {
+    console.log("Content-Type:", contentType);
+  }
+  if (req.body !== undefined && Object.keys(req.body || {}).length > 0) {
+    console.log("req.body:", req.body);
+  }
+  if (req.query && Object.keys(req.query).length > 0) {
+    console.log("req.query:", req.query);
+  }
   console.log("---");
   next();
 });
