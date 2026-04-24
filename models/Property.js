@@ -1,23 +1,29 @@
 const mongoose = require("mongoose");
 const slugify = require("slugify");
 
-// Image sub-schema
-const imageSchema = new mongoose.Schema(
-{
-  url: {
-    type: String,
-    required: true
+// media sub-schema
+const mediaSchema = new mongoose.Schema(
+  {
+    public_id: {
+      type: String,
+      required: true
+    },
+    url: {
+      type: String,
+      required: true
+    },
+    resource_type: {
+      type: String,
+      enum: ["image", "video"],
+      required: true
+    }
   },
-  public_id: {
-    type: String,
-    required: true
-  }
-},
-{ _id: false }
+  { _id: false }
 );
 
 const propertySchema = new mongoose.Schema(
 {
+
   title: {
     type: String,
     required: true,
@@ -54,37 +60,70 @@ const propertySchema = new mongoose.Schema(
   },
 
   address: {
+    street: {
+      type: String,
+      required: true
+    },
     city: {
       type: String,
+      required: true,
       index: true
     },
-    state: String,
-    country: String
+    state: {
+      type: String,
+      required: true
+    },
+    country: {
+      type: String,
+      required: true
+    }
   },
+
+   media: {
+      images: {
+        type: [mediaSchema],
+        default: []
+      },
+      videos: {
+        type: [mediaSchema],
+        default: []
+      }
+    },
+
 
   location: {
-    type: {
-      type: String,
-      enum: ["Point"],
-      default: "Point"
+      type: {
+        type: String,
+        enum: ["Point"],
+        required: true
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        required: true
+      }
     },
-    coordinates: {
-      type: [Number], // [longitude, latitude]
-      index: "2dsphere"
-    }
-  },
 
-  //Embedded images
-  images: [imageSchema],
 
   //Amenities (important for filtering)
-  amenities: [
-    {
-      type: String,
-      trim: true,
-      index: true
-    }
-  ],
+   amenities: {
+      type: [String],
+      default: []
+    },
+
+    bedrooms: {
+      type: Number,
+      min: 0
+    },
+
+    bathrooms: {
+      type: Number,
+      min: 0
+    },
+
+    area: {
+      type: Number, // square meters
+      min: 0
+    },
 
   //Featured property flag
   isFeatured: {
@@ -93,7 +132,7 @@ const propertySchema = new mongoose.Schema(
     index: true
   },
 
-  owner: {
+  landlord: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true
@@ -120,25 +159,21 @@ const propertySchema = new mongoose.Schema(
 
 
 //Generate slug on CREATE
-propertySchema.pre("save", function (next) {
+propertySchema.pre("save", function () {
   if (this.isModified("title")) {
     this.slug = slugify(this.title, { lower: true, strict: true });
   }
-  next();
 });
 
 
 
 // Dynamic slug update (findByIdAndUpdate, etc.)
-propertySchema.pre("findOneAndUpdate", function (next) {
-
+propertySchema.pre("findOneAndUpdate", function () {
   const update = this.getUpdate();
 
   if (update.title) {
     update.slug = slugify(update.title, { lower: true, strict: true });
   }
-
-  next();
 });
 
 

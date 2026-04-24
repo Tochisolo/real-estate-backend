@@ -1,4 +1,4 @@
-const Property = require("../models/Property");
+const Property = require("../models/property.js");
 const mongoose = require("mongoose");
 const cloudinary = require("../config/cloudinary");
 
@@ -6,21 +6,21 @@ const cloudinary = require("../config/cloudinary");
 //Helper: Build owner view (works with lean objects)
 const formatOwner = (property, req) => {
   const isAdmin = req.user?.role === "admin";
-  const isOwner = property.owner?._id?.toString() === req.user?.id;
+  const isOwner = property.landlord?._id?.toString() === req.user?.id;
 
   // TODO: Replace with real booking check
   const hasBooked = req.user?.hasBooked === true;
 
   if (isAdmin || isOwner || hasBooked) {
     return {
-      fullName: property.owner.fullName,
-      email: property.owner.email,
-      phoneNumber: property.owner.phoneNumber
+      fullName: property.landlord.fullName,
+      email: property.landlord.email,
+      phoneNumber: property.landlord.phoneNumber
     };
-  }
+  } 
 
   return {
-    fullName: property.owner.fullName
+    fullName: property.landlord.fullName
   };
 };
 
@@ -29,30 +29,112 @@ const formatOwner = (property, req) => {
 // CREATE PROPERTY
 exports.createProperty = async (req, res) => {
   try {
-
-    const { title, description, propertyType, listingType, price } = req.body;
-
-    if (!title || !description || !propertyType || !listingType || !price) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Required fields are missing"
+        message: "Request body is required",
+        errors: ["body is empty"]
+      });
+    }
+
+    const {
+      title,
+      description,
+      propertyType,
+      listingType,
+      price,
+      images,
+      address,
+      // location,
+      amenities
+    } = req.body;
+
+    const errors = [];
+
+    // Basic fields
+    if (!title) errors.push("title is required");
+    if (!description) errors.push("description is required");
+    if (!propertyType) errors.push("propertyType is required");
+    if (!listingType) errors.push("listingType is required");
+    if (!price) errors.push("price is required");
+
+    // Images
+    if (!Array.isArray(images) || images.length === 0) {
+      errors.push("images must be a non-empty array");
+    }
+
+    // Address
+    if (!address) {
+      errors.push("address is required");
+    } else {
+      if (!address.city) errors.push("address.city is required");
+      if (!address.street) errors.push("address.street is required");
+      if (!address.state) errors.push("address.state is required");
+      if (!address.country) errors.push("address.country is required");
+    }
+
+    // Location (GeoJSON)
+    // if (!location) {
+    //   errors.push("location is required");
+    // } else {
+    //   if (location.type !== "Point") {
+    //     errors.push("location.type must be 'Point'");
+    //   }
+    //   if (
+    //     !Array.isArray(location.coordinates) ||
+    //     location.coordinates.length !== 2
+    //   ) {
+    //     errors.push("location.coordinates must be [lng, lat]");
+    //   }
+    // }
+
+    // Amenities
+    if (!amenities) {
+      errors.push("amenities is required");
+    }
+
+    // If any errors exist → return ALL of them
+    if (errors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors
+      });
+    }
+
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: user context missing"
       });
     }
 
     const property = await Property.create({
-      ...req.body,
-      owner: req.user.id
+      title,
+      description,
+      propertyType,
+      listingType,
+      price,
+      images,
+      address,
+      // location,
+      amenities,
+      landlord: req.user.id
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Property created successfully",
       data: property
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Server Error" });
+    console.error("Create Property Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server Error"
+    });
   }
 };
 
@@ -64,7 +146,7 @@ exports.getProperties = async (req, res) => {
 
     let filter = {};
 
-    // 🔍 Case-insensitive filters
+    //  Case-insensitive filters
     if (req.query.city) {
       filter["address.city"] = { $regex: req.query.city, $options: "i" };
     }
@@ -156,7 +238,7 @@ exports.getProperty = async (req, res) => {
     }
 
     const property = await Property.findById(id)
-      .populate("owner", "fullName email phoneNumber")
+      .populate("landlord", "fullName email phoneNumber")
       .lean();
 
     if (!property) {
@@ -166,7 +248,7 @@ exports.getProperty = async (req, res) => {
       });
     }
 
-    property.owner = formatOwner(property, req);
+    property.landlord = formatOwner(property, req);
 
     res.status(200).json({
       success: true,
@@ -202,7 +284,7 @@ exports.updateProperty = async (req, res) => {
       });
     }
 
-    const isOwner = property.owner.toString() === req.user.id;
+    const isOwner = property.landlord.toString() === req.user.id;
     const isAdmin = req.user.role === "admin";
 
     if (!isOwner && !isAdmin) {
