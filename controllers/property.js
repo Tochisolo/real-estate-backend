@@ -1,4 +1,4 @@
-const Property = require("../models/property.js");
+const property = require("../models/property.js");
 const mongoose = require("mongoose");
 const cloudinary = require("../config/cloudinary");
 
